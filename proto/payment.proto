@@ -1,0 +1,29 @@
+syntax = "proto3";
+
+package hipstershop;
+
+service PaymentService {
+  rpc Charge(ChargeRequest) returns (ChargeResponse) {}
+}
+
+message Money {
+  string currency_code = 1;
+  int64 units = 2;
+  int32 nanos = 3;
+}
+
+message CreditCardInfo {
+  string credit_card_number = 1;
+  int32 credit_card_cvv = 2;
+  int32 credit_card_expiration_year = 3;
+  int32 credit_card_expiration_month = 4;
+}
+
+message ChargeRequest {
+  Money amount = 1;
+  CreditCardInfo credit_card = 2;
+}
+
+message ChargeResponse {
+  string transaction_id = 1;
+}
