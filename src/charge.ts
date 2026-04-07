@@ -62,7 +62,9 @@ class InvalidCreditCard extends CreditCardError {
 
 class UnacceptedCreditCard extends CreditCardError {
   constructor(cardType: string) {
-    super(`Sorry, we cannot process ${cardType} credit cards. Only VISA or MasterCard is accepted.`);
+    super(
+      `Sorry, we cannot process ${cardType} credit cards. Only VISA or MasterCard is accepted.`,
+    );
   }
 }
 
@@ -105,7 +107,13 @@ export function charge(request: ChargeRequest): ChargeResponse {
   }
 
   logger.info(
-    { cardType, lastFour: cardNumber.slice(-4), currency: amount.currency_code, units: amount.units, nanos: amount.nanos },
+    {
+      cardType,
+      lastFour: cardNumber.slice(-4),
+      currency: amount.currency_code,
+      units: amount.units,
+      nanos: amount.nanos,
+    },
     'Transaction processed',
   );
 

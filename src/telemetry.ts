@@ -52,11 +52,14 @@ sdk.start();
 
 // The PrometheusExporter HTTP server is not auto-started by NodeSDK —
 // we must start it explicitly so Alloy can scrape /metrics.
-prometheusExporter.startServer().then(() => {
-  console.log(`Prometheus metrics server listening on :${METRICS_PORT}/metrics`);
-}).catch((err: unknown) => {
-  console.error('Failed to start Prometheus metrics server:', err);
-});
+prometheusExporter
+  .startServer()
+  .then(() => {
+    console.log(`Prometheus metrics server listening on :${METRICS_PORT}/metrics`);
+  })
+  .catch((err: unknown) => {
+    console.error('Failed to start Prometheus metrics server:', err);
+  });
 
 // ---------------------------------------------------------------------------
 // Custom gRPC server metrics
@@ -88,61 +91,77 @@ const rpcServerActiveRequests = meter.createUpDownCounter('rpc_server_active_req
 // Node.js runtime metrics (observable gauges scraped on each /metrics request)
 // ---------------------------------------------------------------------------
 
-runtimeMeter.createObservableGauge('nodejs_process_resident_memory_bytes', {
-  description: 'Resident memory size in bytes',
-  unit: 'By',
-}).addCallback((obs) => {
-  obs.observe(process.memoryUsage().rss);
-});
+runtimeMeter
+  .createObservableGauge('nodejs_process_resident_memory_bytes', {
+    description: 'Resident memory size in bytes',
+    unit: 'By',
+  })
+  .addCallback((obs) => {
+    obs.observe(process.memoryUsage().rss);
+  });
 
-runtimeMeter.createObservableGauge('nodejs_heap_size_total_bytes', {
-  description: 'V8 heap total size in bytes',
-  unit: 'By',
-}).addCallback((obs) => {
-  obs.observe(process.memoryUsage().heapTotal);
-});
+runtimeMeter
+  .createObservableGauge('nodejs_heap_size_total_bytes', {
+    description: 'V8 heap total size in bytes',
+    unit: 'By',
+  })
+  .addCallback((obs) => {
+    obs.observe(process.memoryUsage().heapTotal);
+  });
 
-runtimeMeter.createObservableGauge('nodejs_heap_size_used_bytes', {
-  description: 'V8 heap used size in bytes',
-  unit: 'By',
-}).addCallback((obs) => {
-  obs.observe(process.memoryUsage().heapUsed);
-});
+runtimeMeter
+  .createObservableGauge('nodejs_heap_size_used_bytes', {
+    description: 'V8 heap used size in bytes',
+    unit: 'By',
+  })
+  .addCallback((obs) => {
+    obs.observe(process.memoryUsage().heapUsed);
+  });
 
-runtimeMeter.createObservableGauge('nodejs_external_memory_bytes', {
-  description: 'V8 external memory in bytes',
-  unit: 'By',
-}).addCallback((obs) => {
-  obs.observe(process.memoryUsage().external);
-});
+runtimeMeter
+  .createObservableGauge('nodejs_external_memory_bytes', {
+    description: 'V8 external memory in bytes',
+    unit: 'By',
+  })
+  .addCallback((obs) => {
+    obs.observe(process.memoryUsage().external);
+  });
 
-runtimeMeter.createObservableGauge('nodejs_array_buffers_bytes', {
-  description: 'Memory allocated for ArrayBuffers and SharedArrayBuffers',
-  unit: 'By',
-}).addCallback((obs) => {
-  obs.observe(process.memoryUsage().arrayBuffers);
-});
+runtimeMeter
+  .createObservableGauge('nodejs_array_buffers_bytes', {
+    description: 'Memory allocated for ArrayBuffers and SharedArrayBuffers',
+    unit: 'By',
+  })
+  .addCallback((obs) => {
+    obs.observe(process.memoryUsage().arrayBuffers);
+  });
 
-runtimeMeter.createObservableGauge('nodejs_process_cpu_user_seconds', {
-  description: 'CPU user time in seconds',
-  unit: 's',
-}).addCallback((obs) => {
-  obs.observe(process.cpuUsage().user / 1e6);
-});
+runtimeMeter
+  .createObservableGauge('nodejs_process_cpu_user_seconds', {
+    description: 'CPU user time in seconds',
+    unit: 's',
+  })
+  .addCallback((obs) => {
+    obs.observe(process.cpuUsage().user / 1e6);
+  });
 
-runtimeMeter.createObservableGauge('nodejs_process_cpu_system_seconds', {
-  description: 'CPU system time in seconds',
-  unit: 's',
-}).addCallback((obs) => {
-  obs.observe(process.cpuUsage().system / 1e6);
-});
+runtimeMeter
+  .createObservableGauge('nodejs_process_cpu_system_seconds', {
+    description: 'CPU system time in seconds',
+    unit: 's',
+  })
+  .addCallback((obs) => {
+    obs.observe(process.cpuUsage().system / 1e6);
+  });
 
-runtimeMeter.createObservableGauge('nodejs_process_uptime_seconds', {
-  description: 'Process uptime in seconds',
-  unit: 's',
-}).addCallback((obs) => {
-  obs.observe(process.uptime());
-});
+runtimeMeter
+  .createObservableGauge('nodejs_process_uptime_seconds', {
+    description: 'Process uptime in seconds',
+    unit: 's',
+  })
+  .addCallback((obs) => {
+    obs.observe(process.uptime());
+  });
 
 // Event loop lag — measures delay between setTimeout(0) scheduling and execution
 let eventLoopLagMs = 0;
@@ -155,25 +174,31 @@ function measureEventLoopLag(): void {
 }
 measureEventLoopLag();
 
-runtimeMeter.createObservableGauge('nodejs_eventloop_lag_seconds', {
-  description: 'Event loop lag in seconds',
-  unit: 's',
-}).addCallback((obs) => {
-  obs.observe(eventLoopLagMs / 1000);
-});
+runtimeMeter
+  .createObservableGauge('nodejs_eventloop_lag_seconds', {
+    description: 'Event loop lag in seconds',
+    unit: 's',
+  })
+  .addCallback((obs) => {
+    obs.observe(eventLoopLagMs / 1000);
+  });
 
 // Active handles and requests
-runtimeMeter.createObservableGauge('nodejs_active_handles_total', {
-  description: 'Number of active handles',
-}).addCallback((obs) => {
-  obs.observe((process as any)._getActiveHandles?.().length ?? 0);
-});
+runtimeMeter
+  .createObservableGauge('nodejs_active_handles_total', {
+    description: 'Number of active handles',
+  })
+  .addCallback((obs) => {
+    obs.observe((process as any)._getActiveHandles?.().length ?? 0);
+  });
 
-runtimeMeter.createObservableGauge('nodejs_active_requests_total', {
-  description: 'Number of active requests',
-}).addCallback((obs) => {
-  obs.observe((process as any)._getActiveRequests?.().length ?? 0);
-});
+runtimeMeter
+  .createObservableGauge('nodejs_active_requests_total', {
+    description: 'Number of active requests',
+  })
+  .addCallback((obs) => {
+    obs.observe((process as any)._getActiveRequests?.().length ?? 0);
+  });
 
 /**
  * Call this at the start of each gRPC handler. Returns a function to call

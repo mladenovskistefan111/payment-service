@@ -108,17 +108,13 @@ function main(): void {
   server.addService(paymentProto.PaymentService.service, { charge: chargeHandler });
   server.addService(healthProto.Health.service, { check });
 
-  server.bindAsync(
-    `[::]:${port}`,
-    grpc.ServerCredentials.createInsecure(),
-    (err, boundPort) => {
-      if (err) {
-        logger.error({ err }, 'Failed to bind gRPC server');
-        process.exit(1);
-      }
-      logger.info({ port: boundPort }, 'PaymentService gRPC server started');
-    },
-  );
+  server.bindAsync(`[::]:${port}`, grpc.ServerCredentials.createInsecure(), (err, boundPort) => {
+    if (err) {
+      logger.error({ err }, 'Failed to bind gRPC server');
+      process.exit(1);
+    }
+    logger.info({ port: boundPort }, 'PaymentService gRPC server started');
+  });
 }
 
 main();
