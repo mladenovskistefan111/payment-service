@@ -44,7 +44,9 @@ const sdk = new NodeSDK({
       exportIntervalMillis: METRIC_EXPORT_INTERVAL_MS,
     }),
   ],
-  logRecordProcessors: [new BatchLogRecordProcessor({ exporter: new OTLPLogExporter({ url: OTEL_ENDPOINT }) })],
+  logRecordProcessors: [
+    new BatchLogRecordProcessor({ exporter: new OTLPLogExporter({ url: OTEL_ENDPOINT }) }),
+  ],
   // PinoInstrumentation forwards pino records to the OTel logs pipeline and adds trace/span ids.
   instrumentations: [new GrpcInstrumentation(), new PinoInstrumentation()],
 });
