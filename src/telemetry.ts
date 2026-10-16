@@ -1,65 +1,56 @@
 import { NodeSDK } from '@opentelemetry/sdk-node';
 import { Resource } from '@opentelemetry/resources';
 import { ATTR_SERVICE_NAME, ATTR_SERVICE_VERSION } from '@opentelemetry/semantic-conventions';
-import { OTLPTraceExporter } from '@opentelemetry/exporter-trace-otlp-http';
-import { OTLPLogExporter } from '@opentelemetry/exporter-logs-otlp-http';
-import { PrometheusExporter } from '@opentelemetry/exporter-prometheus';
+import { OTLPTraceExporter } from '@opentelemetry/exporter-trace-otlp-grpc';
+import { OTLPMetricExporter } from '@opentelemetry/exporter-metrics-otlp-grpc';
+import { OTLPLogExporter } from '@opentelemetry/exporter-logs-otlp-grpc';
+import { PeriodicExportingMetricReader } from '@opentelemetry/sdk-metrics';
 import { BatchLogRecordProcessor } from '@opentelemetry/sdk-logs';
+import { BatchSpanProcessor } from '@opentelemetry/sdk-trace-base';
 import { GrpcInstrumentation } from '@opentelemetry/instrumentation-grpc';
-import { SimpleSpanProcessor } from '@opentelemetry/sdk-trace-base';
+import { PinoInstrumentation } from '@opentelemetry/instrumentation-pino';
 import * as api from '@opentelemetry/api';
+import { hostname } from 'os';
+import { monitorEventLoopDelay } from 'perf_hooks';
 import Pyroscope from '@pyroscope/nodejs';
 
 const SERVICE_NAME = process.env.OTEL_SERVICE_NAME ?? 'payment-service';
 const SERVICE_VERSION = process.env.SERVICE_VERSION ?? '1.0.0';
-const OTEL_ENDPOINT = process.env.OTEL_EXPORTER_OTLP_ENDPOINT ?? 'http://localhost:4318';
+// OTLP/gRPC endpoint (scheme required, e.g. http://alloy:4317). COLLECTOR_SERVICE_ADDR (host:port)
+// is kept as a legacy fallback.
+const OTEL_ENDPOINT =
+  process.env.OTEL_EXPORTER_OTLP_ENDPOINT ??
+  (process.env.COLLECTOR_SERVICE_ADDR
+    ? `http://${process.env.COLLECTOR_SERVICE_ADDR}`
+    : 'http://localhost:4317');
 const PYROSCOPE_ENDPOINT = process.env.PYROSCOPE_ADDR ?? 'http://localhost:4040';
-const METRICS_PORT = parseInt(process.env.METRICS_PORT ?? '9464', 10);
+const METRIC_EXPORT_INTERVAL_MS = parseInt(process.env.OTEL_METRIC_EXPORT_INTERVAL ?? '15000', 10);
 
 const resource = new Resource({
   [ATTR_SERVICE_NAME]: SERVICE_NAME,
   [ATTR_SERVICE_VERSION]: SERVICE_VERSION,
+  // Distinguishes replicas: in Kubernetes the hostname is the pod name.
+  'service.instance.id': process.env.HOSTNAME ?? hostname(),
 });
 
-// --- Trace exporter (OTLP HTTP → Alloy → Tempo) ---
-const traceExporter = new OTLPTraceExporter({
-  url: `${OTEL_ENDPOINT}/v1/traces`,
-});
-
-// --- Log exporter (OTLP HTTP → Alloy → Loki) ---
-const logExporter = new OTLPLogExporter({
-  url: `${OTEL_ENDPOINT}/v1/logs`,
-});
-
-// --- Prometheus metrics exporter (Alloy scrapes this endpoint) ---
-const prometheusExporter = new PrometheusExporter({
-  port: METRICS_PORT,
-  host: '0.0.0.0',
-});
-
+// All three signals are pushed over OTLP/gRPC to the collector (Alloy), which fans out
+// to Tempo (traces), Mimir (metrics) and Loki (logs).
 const sdk = new NodeSDK({
   resource,
-  spanProcessor: new SimpleSpanProcessor(traceExporter),
-  metricReader: prometheusExporter,
-  logRecordProcessor: new BatchLogRecordProcessor(logExporter),
-  instrumentations: [new GrpcInstrumentation()],
+  spanProcessor: new BatchSpanProcessor(new OTLPTraceExporter({ url: OTEL_ENDPOINT })),
+  metricReader: new PeriodicExportingMetricReader({
+    exporter: new OTLPMetricExporter({ url: OTEL_ENDPOINT }),
+    exportIntervalMillis: METRIC_EXPORT_INTERVAL_MS,
+  }),
+  logRecordProcessor: new BatchLogRecordProcessor(new OTLPLogExporter({ url: OTEL_ENDPOINT })),
+  // PinoInstrumentation forwards pino records to the OTel logs pipeline and adds trace/span ids.
+  instrumentations: [new GrpcInstrumentation(), new PinoInstrumentation()],
 });
 
 // Start the SDK immediately on import — server.ts does `import './telemetry'`
-// so this runs before any gRPC server/client code loads, ensuring instrumentation
-// patches @grpc/grpc-js before it's used.
+// so this runs before any gRPC server/client or pino code loads, ensuring instrumentation
+// patches @grpc/grpc-js and pino before they are used.
 sdk.start();
-
-// The PrometheusExporter HTTP server is not auto-started by NodeSDK —
-// we must start it explicitly so Alloy can scrape /metrics.
-prometheusExporter
-  .startServer()
-  .then(() => {
-    console.log(`Prometheus metrics server listening on :${METRICS_PORT}/metrics`);
-  })
-  .catch((err: unknown) => {
-    console.error('Failed to start Prometheus metrics server:', err);
-  });
 
 // ---------------------------------------------------------------------------
 // Custom gRPC server metrics
@@ -163,16 +154,10 @@ runtimeMeter
     obs.observe(process.uptime());
   });
 
-// Event loop lag — measures delay between setTimeout(0) scheduling and execution
-let eventLoopLagMs = 0;
-function measureEventLoopLag(): void {
-  const start = process.hrtime.bigint();
-  setTimeout(() => {
-    eventLoopLagMs = Number(process.hrtime.bigint() - start) / 1e6; // ms
-    measureEventLoopLag();
-  }, 0);
-}
-measureEventLoopLag();
+// Event loop lag — sampled by Node's built-in histogram (cheap; a self-rescheduling setTimeout(0)
+// loop would keep the process at ~25% CPU even when idle). Reported value = mean delay since the last scrape.
+const eventLoopDelay = monitorEventLoopDelay({ resolution: 10 });
+eventLoopDelay.enable();
 
 runtimeMeter
   .createObservableGauge('nodejs_eventloop_lag_seconds', {
@@ -180,7 +165,9 @@ runtimeMeter
     unit: 's',
   })
   .addCallback((obs) => {
-    obs.observe(eventLoopLagMs / 1000);
+    const meanNs = eventLoopDelay.count > 0 ? eventLoopDelay.mean : 0;
+    eventLoopDelay.reset();
+    obs.observe(meanNs / 1e9);
   });
 
 // Active handles and requests
