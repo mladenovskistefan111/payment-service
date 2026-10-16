@@ -20,7 +20,10 @@ FROM node:22.22.2-alpine3.23 AS runtime
 
 ENV NODE_ENV=production
 
-RUN addgroup -S appgroup && adduser -S appuser -G appgroup
+# npm/npx are not needed at runtime (entrypoint is plain node); removing them drops npm's bundled
+# dependencies (tar, pacote, sigstore, ...) from the image CVE surface.
+RUN rm -rf /usr/local/lib/node_modules/npm /usr/local/bin/npm /usr/local/bin/npx \
+    && addgroup -S appgroup && adduser -S appuser -G appgroup
 
 WORKDIR /app
 
