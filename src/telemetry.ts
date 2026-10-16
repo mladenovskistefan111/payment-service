@@ -1,5 +1,5 @@
 import { NodeSDK } from '@opentelemetry/sdk-node';
-import { Resource } from '@opentelemetry/resources';
+import { resourceFromAttributes } from '@opentelemetry/resources';
 import { ATTR_SERVICE_NAME, ATTR_SERVICE_VERSION } from '@opentelemetry/semantic-conventions';
 import { OTLPTraceExporter } from '@opentelemetry/exporter-trace-otlp-grpc';
 import { OTLPMetricExporter } from '@opentelemetry/exporter-metrics-otlp-grpc';
@@ -26,7 +26,7 @@ const OTEL_ENDPOINT =
 const PYROSCOPE_ENDPOINT = process.env.PYROSCOPE_ADDR ?? 'http://localhost:4040';
 const METRIC_EXPORT_INTERVAL_MS = parseInt(process.env.OTEL_METRIC_EXPORT_INTERVAL ?? '15000', 10);
 
-const resource = new Resource({
+const resource = resourceFromAttributes({
   [ATTR_SERVICE_NAME]: SERVICE_NAME,
   [ATTR_SERVICE_VERSION]: SERVICE_VERSION,
   // Distinguishes replicas: in Kubernetes the hostname is the pod name.
@@ -37,12 +37,14 @@ const resource = new Resource({
 // to Tempo (traces), Mimir (metrics) and Loki (logs).
 const sdk = new NodeSDK({
   resource,
-  spanProcessor: new BatchSpanProcessor(new OTLPTraceExporter({ url: OTEL_ENDPOINT })),
-  metricReader: new PeriodicExportingMetricReader({
-    exporter: new OTLPMetricExporter({ url: OTEL_ENDPOINT }),
-    exportIntervalMillis: METRIC_EXPORT_INTERVAL_MS,
-  }),
-  logRecordProcessor: new BatchLogRecordProcessor(new OTLPLogExporter({ url: OTEL_ENDPOINT })),
+  spanProcessors: [new BatchSpanProcessor(new OTLPTraceExporter({ url: OTEL_ENDPOINT }))],
+  metricReaders: [
+    new PeriodicExportingMetricReader({
+      exporter: new OTLPMetricExporter({ url: OTEL_ENDPOINT }),
+      exportIntervalMillis: METRIC_EXPORT_INTERVAL_MS,
+    }),
+  ],
+  logRecordProcessors: [new BatchLogRecordProcessor({ exporter: new OTLPLogExporter({ url: OTEL_ENDPOINT }) })],
   // PinoInstrumentation forwards pino records to the OTel logs pipeline and adds trace/span ids.
   instrumentations: [new GrpcInstrumentation(), new PinoInstrumentation()],
 });
