@@ -22,7 +22,8 @@ ENV NODE_ENV=production
 
 # npm/npx are not needed at runtime (entrypoint is plain node); removing them drops npm's bundled
 # dependencies (tar, pacote, sigstore, ...) from the image CVE surface.
-RUN rm -rf /usr/local/lib/node_modules/npm /usr/local/bin/npm /usr/local/bin/npx \
+RUN apk upgrade --no-cache \
+    && rm -rf /usr/local/lib/node_modules/npm /usr/local/bin/npm /usr/local/bin/npx \
     && addgroup -S appgroup && adduser -S appuser -G appgroup
 
 WORKDIR /app
