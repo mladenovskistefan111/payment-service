@@ -6,6 +6,7 @@ metadata:
   description: "A gRPC service that \"processes\" payments for the platform-demo e-commerce platform."
   annotations:
     github.com/project-slug: platform-boutique/app-payment-service
+    backstage.io/source-location: url:https://github.com/platform-boutique/app-payment-service/tree/main/
     backstage.io/techdocs-ref: dir:.
     backstage.io/kubernetes-id: payment-service
     backstage.io/kubernetes-namespace: platform-demo
@@ -16,7 +17,6 @@ metadata:
     grafana/overview-dashboard: "https://grafana.platform-demo.test/d/payment-service-overview"
   tags: [nodejs, typescript, grpc]
   links:
-    - { url: "https://github.com/platform-boutique/app-payment-service", title: Repository, icon: github }
     - { url: "https://argocd.platform-demo.test/applications/argocd/dev-payment-service", title: Argo CD, icon: dashboard }
     - { url: "https://grafana.platform-demo.test/d/payment-service-overview", title: Grafana dashboard, icon: dashboard }
 spec:
