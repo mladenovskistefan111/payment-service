@@ -1,0 +1,43 @@
+apiVersion: backstage.io/v1alpha1
+kind: Component
+metadata:
+  name: payment-service
+  title: payment-service
+  description: "A gRPC service that \"processes\" payments for the platform-demo e-commerce platform."
+  annotations:
+    github.com/project-slug: platform-boutique/app-payment-service
+    backstage.io/source-location: url:https://github.com/platform-boutique/app-payment-service/tree/main/
+    backstage.io/techdocs-ref: dir:.
+    backstage.io/kubernetes-id: payment-service
+    backstage.io/kubernetes-namespace: platform-demo
+    backstage.io/kubernetes-label-selector: app.kubernetes.io/name=payment-service
+    argocd/app-name: dev-payment-service
+    grafana/dashboard-selector: "tags @> 'payment'"
+    grafana/alert-label-selector: "service=payment-service"
+    grafana/overview-dashboard: "https://grafana.platform-demo.test/d/payment-service-overview"
+  tags: [nodejs, typescript, grpc]
+  links:
+    - { url: "https://argocd.platform-demo.test/applications/argocd/dev-payment-service", title: Argo CD, icon: dashboard }
+    - { url: "https://grafana.platform-demo.test/d/payment-service-overview", title: Grafana dashboard, icon: dashboard }
+spec:
+  type: service
+  lifecycle: experimental
+  owner: group:default/maintainers
+  system: shop
+  providesApis: [payment-service-api]
+---
+apiVersion: backstage.io/v1alpha1
+kind: API
+metadata:
+  name: payment-service-api
+  description: gRPC interface of payment-service (Protocol Buffers).
+  tags: [grpc, protobuf]
+  links:
+    - { url: "https://github.com/platform-boutique/app-payment-service/blob/main/proto/payment.proto", title: "payment.proto on GitHub", icon: code }
+spec:
+  type: grpc
+  lifecycle: experimental
+  owner: group:default/maintainers
+  system: shop
+  definition:
+    $text: ./proto/payment.proto
