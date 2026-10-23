@@ -41,8 +41,7 @@ flowchart LR
 ## Find it elsewhere
 
 <div class="pd-cards" markdown>
-<div><h4><a href="https://argocd.platform-demo.test/applications/argocd/dev-payment-service">Argo CD</a></h4><p>Sync and health of <code>dev-payment-service</code>.</p></div>
-<div><h4><a href="https://grafana.platform-demo.test/d/payment-service-overview">Grafana</a></h4><p>Latency, traffic and errors (<code>payment-service-overview</code>).</p></div>
+<div><h4><a href="https://argocd.platform-demo.click/applications/argocd/dev-payment-service">Argo CD</a></h4><p>Sync and health of <code>dev-payment-service</code>.</p></div>
 <div><h4><a href="https://github.com/platform-boutique/app-payment-service">Repository</a></h4><p>Source, pull requests and releases of <code>app-payment-service</code>.</p></div>
 </div>
 
